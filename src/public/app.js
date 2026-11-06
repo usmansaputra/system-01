@@ -372,23 +372,36 @@ function openReveal() {
 function startSlideshow() {
   const items = (D.memories || [])
   const stage = $('#slide-stage')
-  const dotsEl = $('#slide-dots')
+  const progEl = $('#slide-progress')
   const capEl = $('#slide-caption')
-  const countEl = $('#slide-count')
+  const scrimEl = $('.slide-scrim')
   let idx = 0
   let timer = null
+  let alive = true
 
   if (!items.length) {
     stage.innerHTML = `<div class="slide active"><div class="slide-empty">
       <h2>Belum ada kenangan</h2><p class="muted">Admin belum upload foto/video.<br>Buka /admin → Memory Gallery.</p></div></div>`
     $('#slide-end').classList.remove('hidden')
     $('#s-end-btn').addEventListener('click', () => { unlock(7); show('surprise') })
-    $('#s-prev').style.display = $('#s-next').style.display = 'none'
     return
   }
 
-  dotsEl.innerHTML = items.map((_, i) => `<span class="s-dot" data-i="${i}"></span>`).join('')
-  const dots = $$('.s-dot', dotsEl)
+  // Progress bar tipis di atas ala story: 1 segmen per slide
+  progEl.innerHTML = items.map(() => '<span class="pb-seg"><span class="pb-fill"></span></span>').join('')
+  const fills = $$('.pb-fill', progEl)
+
+  function setProgress(i, durSec, instant = false) {
+    fills.forEach((f, fi) => {
+      f.style.transition = 'none'
+      f.style.width = fi < i ? '100%' : '0%'
+    })
+    const cur = fills[i]
+    if (cur) requestAnimationFrame(() => {
+      cur.style.transition = instant ? 'none' : 'width ' + Math.max(2, durSec || 5) + 's linear'
+      cur.style.width = '100%'
+    })
+  }
 
   function render(i, dir = 1) {
     idx = (i + items.length) % items.length
@@ -406,16 +419,23 @@ function startSlideshow() {
     const old = [...stage.querySelectorAll('.slide')].slice(0, -1)
     old.forEach((o) => { o.classList.add('leaving'); setTimeout(() => o.remove(), 900) })
     requestAnimationFrame(() => el.classList.add('active'))
-    capEl.innerHTML = `<b>${esc(it.title || '')}</b>${it.caption ? '<span>' + esc(it.caption) + '</span>' : ''}`
-    capEl.className = 'slide-caption show t-' + (it.transition || 'fade')
-    dots.forEach((d, di) => d.classList.toggle('on', di === idx))
-    countEl.textContent = `${idx + 1}/${items.length}`
+
+    // Caption sinematik: tanpa kotak — keterbacaan dari scrim gradient + text-shadow
+    const hasCap = !!(it.title || it.caption)
+    capEl.innerHTML = hasCap
+      ? `<b>${esc(it.title || '')}</b>${it.caption ? '<span>' + esc(it.caption) + '</span>' : ''}`
+      : ''
+    capEl.classList.toggle('show', hasCap)
+    if (scrimEl) scrimEl.classList.toggle('show', hasCap)
+    setProgress(idx, it.duration_sec || 5)
     schedule(it)
   }
 
   function schedule(it) {
     clearTimeout(timer)
     if (it.media_type === 'video') {
+      // Durasi video gak bisa ditebak → segmen progress langsung penuh
+      setProgress(idx, 0, true)
       const v = stage.querySelector('video:last-of-type')
       if (v) {
         v.muted = true
@@ -430,16 +450,37 @@ function startSlideshow() {
   function next(dir = 1) {
     if (idx === items.length - 1 && dir > 0) {
       clearTimeout(timer)
+      alive = false
+      fills.forEach((f) => { f.style.transition = 'none'; f.style.width = '100%' })
       $('#slide-end').classList.remove('hidden')
       $('#s-end-btn').addEventListener('click', () => { unlock(7); show('surprise') })
       capEl.classList.remove('show')
+      if (scrimEl) scrimEl.classList.remove('show')
       return
     }
     render(idx + dir, dir)
   }
 
-  $('#s-next').addEventListener('click', () => next(1))
-  $('#s-prev').addEventListener('click', () => render(idx - 1, -1))
+  // Kontrol tanpa tombol: tap kiri/kanan layar + swipe di HP + panah keyboard.
+  // Listener swipe nempel ke section (di-render ulang tiap show → gak numpuk).
+  const sec = $('[data-screen="memory"]')
+  $('.tz-left', sec).addEventListener('click', () => { if (alive) render(idx - 1, -1) })
+  $('.tz-right', sec).addEventListener('click', () => { if (alive) next(1) })
+  let touchX = null
+  sec.addEventListener('touchstart', (e) => { if (alive) touchX = e.touches[0].clientX }, { passive: true })
+  sec.addEventListener('touchend', (e) => {
+    if (!alive || touchX == null) return
+    const dx = e.changedTouches[0].clientX - touchX
+    if (Math.abs(dx) > 60) (dx < 0 ? next(1) : render(idx - 1, -1))
+    touchX = null
+  }, { passive: true })
+  const onKey = (e) => {
+    if (!alive) { document.removeEventListener('keydown', onKey); return }
+    if (e.key === 'ArrowRight') next(1)
+    else if (e.key === 'ArrowLeft') render(idx - 1, -1)
+  }
+  document.addEventListener('keydown', onKey)
+
   render(0)
 }
 

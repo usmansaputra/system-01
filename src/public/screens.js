@@ -183,11 +183,14 @@ const SCREENS = {
     return `
     <section class="screen" data-screen="memory">
       <div class="slide-stage" id="slide-stage"></div>
-      <div class="slide-top mono">UNTUK ${esc(ST.name).toUpperCase()} ♡ · <span id="slide-count">1/${Math.max(1, D.memories.length)}</span></div>
+      <!-- Progress bar tipis di atas, ala story (pengganti counter & dots) -->
+      <div class="slide-progress" id="slide-progress" aria-hidden="true"></div>
+      <!-- Scrim gradient dari bawah → caption nyatu ke foto kayak subtitle film -->
+      <div class="slide-scrim" aria-hidden="true"></div>
       <div class="slide-caption" id="slide-caption"></div>
-      <div class="dots" id="slide-dots"></div>
-      <button class="snav prev" id="s-prev" aria-label="sebelumnya">‹</button>
-      <button class="snav next" id="s-next" aria-label="berikutnya">›</button>
+      <!-- Kontrol invisible: tap/klik sisi kiri = mundur, sisi kanan = lanjut -->
+      <div class="tapzone tz-left" aria-label="slide sebelumnya"></div>
+      <div class="tapzone tz-right" aria-label="slide berikutnya"></div>
       <div id="slide-end" class="slide-end hidden">
         <button id="s-end-btn" class="btn btn-love btn-big">SATU KEJUTAN TERAKHIR →</button>
       </div>

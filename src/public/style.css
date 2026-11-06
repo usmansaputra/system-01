@@ -260,14 +260,31 @@ body.glitch-hard { animation: hardshake .12s steps(2) infinite; }
 
 /* ── SLIDESHOW ── */
 [data-screen="memory"] { padding: 0; }
-.slide-stage { position: fixed; inset: 0; overflow: hidden; }
-.slide { position: absolute; inset: 0; opacity: 0; transition: opacity 1s ease, transform 1s ease; will-change: transform, opacity; }
-.slide img, .slide video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.slide-stage { position: fixed; inset: 0; overflow: hidden; background: #150a20; }
+.slide {
+  position: absolute; inset: 0; opacity: 0; display: flex; align-items: center; justify-content: center;
+  transition: opacity 1s ease, transform 1s ease; will-change: transform, opacity;
+}
+/* Latar = foto yang sama di-blur & dibesarkan → mengisi sisi kosong, tanpa bar hitam */
+.slide img.slide-bg {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block;
+  filter: blur(32px) saturate(1.18) brightness(.58); transform: scale(1.2);
+}
+/* Foto utama = utuh 100%, selalu di tengah, gak kepotong */
+.slide img.slide-img {
+  position: relative; z-index: 1; display: block;
+  max-width: 100%; max-height: 100%; width: auto; height: auto;
+  border-radius: 8px; box-shadow: 0 26px 90px rgba(0, 0, 0, .5);
+}
+.slide video { width: 100%; height: 100%; object-fit: contain; display: block; }
 .slide.active { opacity: 1; z-index: 2; }
 .slide.leaving { opacity: 0; z-index: 1; }
-.slide.active img, .slide.active video { animation: kenburns 14s ease-in-out infinite alternate; }
-@keyframes kenburns { from { transform: scale(1.02); } to { transform: scale(1.16) translate(-1.5%, -1%); } }
-.slide.t-slide.active img, .slide.t-slide.active video { animation: none; }
+.slide.active img.slide-img { animation: kb-fg 13s ease-in-out infinite alternate; }
+.slide.active img.slide-bg { animation: kb-bg 18s ease-in-out infinite alternate; }
+.slide.active video { animation: none; }
+@keyframes kb-fg { from { transform: scale(1); } to { transform: scale(1.055); } }
+@keyframes kb-bg { from { transform: scale(1.2); } to { transform: scale(1.3) translate(1.4%, -.8%); } }
+.slide.t-slide.active img.slide-img, .slide.t-slide.active img.slide-bg, .slide.t-slide.active video { animation: none; }
 .slide.from-right { transform: translateX(60px); }
 .slide.from-left { transform: translateX(-60px); }
 .slide.t-zoom.from-right { transform: scale(1.08); }

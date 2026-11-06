@@ -393,9 +393,12 @@ function startSlideshow() {
   function render(i, dir = 1) {
     idx = (i + items.length) % items.length
     const it = items[idx]
+    // Foto: 2 lapis — latar blur (ngisi layar penuh) + foto utama utuh di tengah.
+    // Video: contain biar utuh & center (gak kepotong).
     const media = it.media_type === 'video'
       ? `<video src="${esc(it.media_url)}" muted playsinline></video>`
-      : `<img src="${esc(it.media_url)}" alt="${esc(it.title || '')}" loading="eager">`
+      : `<img class="slide-bg" src="${esc(it.media_url)}" alt="" aria-hidden="true">` +
+        `<img class="slide-img" src="${esc(it.media_url)}" alt="${esc(it.title || '')}" loading="eager">`
     const el = document.createElement('div')
     el.className = 'slide t-' + (it.transition || 'fade') + (dir > 0 ? ' from-right' : ' from-left')
     el.innerHTML = media

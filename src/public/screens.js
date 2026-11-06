@@ -173,7 +173,7 @@ const SCREENS = {
         <div class="reveal-kicker mono" data-anim>HARI INI · ${esc(fmtTanggal(s.birthday_date) || 'HARI SPESIAL')}</div>
         <h1 class="reveal-title" data-anim>SELAMAT ULANG TAHUN,<br>${esc(ST.name).toUpperCase()}! 🎂</h1>
         <p class="reveal-sub" data-anim>${esc(s.reveal_subtitle || '')}</p>
-        <button id="rv-next" class="btn btn-love btn-big" data-anim>LIHAT KENANGAN KITA →</button>
+        <button id="rv-next" class="btn btn-love btn-big" data-anim>LIHAT GALERI KAMU →</button>
       </div>
     </section>`
   },

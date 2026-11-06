@@ -75,6 +75,7 @@ function show(name, { force = false } = {}) {
   currentScreen = name
   const app = document.getElementById('app')
   app.innerHTML = SCREENS[name]({ D, ST })
+  window.scrollTo(0, 0) // layar baru selalu mulai dari atas (scroll lama gak dibawa)
   const anims = app.querySelectorAll('[data-anim]')
   if (anims.length) {
     gsap.from(anims, { opacity: 0, y: 26, duration: 0.7, stagger: 0.12, ease: 'power3.out' })
@@ -301,6 +302,10 @@ const BINDERS = {
         .to('#envelope', { y: -26, duration: 0.4 })
         .to('.envelope, #lt-open', { opacity: 0, scale: 0.9, duration: 0.5 })
         .add(() => {
+          // Amplop & tombol diangkat dari layout (display:none) — kalau cuma di-fade out,
+          // bayangannya masih nempatin ruang → surat muncul kebawah & harus scroll dulu.
+          $('#envelope').classList.add('hidden')
+          $('#lt-open').classList.add('hidden')
           const card = $('#letter-card')
           card.classList.remove('hidden')
           gsap.from(card, { opacity: 0, y: 60, scale: 0.95, duration: 0.8, ease: 'power3.out' })

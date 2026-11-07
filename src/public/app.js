@@ -691,6 +691,7 @@ function startSlideshow() {
   let idx = 0
   let timer = null
   let alive = true
+  let gen = 0 // nomor generasi slide — guard biar timer slide lama gak nyasar
 
   if (!items.length) {
     stage.innerHTML = `<div class="slide active"><div class="slide-empty">
@@ -740,24 +741,42 @@ function startSlideshow() {
       : ''
     capEl.classList.toggle('show', hasCap)
     if (scrimEl) scrimEl.classList.toggle('show', hasCap)
-    setProgress(idx, it.duration_sec || 5)
     schedule(it)
   }
 
   function schedule(it) {
     clearTimeout(timer)
+    const myGen = ++gen
+    const dur = Math.max(2, it.duration_sec || 5) * 1000
     if (it.media_type === 'video') {
       // Durasi video gak bisa ditebak → segmen progress langsung penuh
       setProgress(idx, 0, true)
       const v = stage.querySelector('video:last-of-type')
       if (v) {
         v.muted = true
-        v.play().catch(() => { timer = setTimeout(next, (it.duration_sec || 5) * 1000) })
+        v.play().catch(() => { timer = setTimeout(next, dur) })
         v.onended = () => next()
         return
       }
+      timer = setTimeout(next, dur)
+      return
     }
-    timer = setTimeout(next, Math.max(2, it.duration_sec || 5) * 1000)
+    // Foto: timer durasi baru jalan SETELAH fotonya beneran ke-load (maks nunggu 3s).
+    // Jaringan lambat → foto gak ke-skip pas masih loading; foto yang udah di-
+    // preload sejak boot → img.complete true → langsung jalan (perilaku sama).
+    const imgs = stage.querySelectorAll('.slide:last-child img')
+    const img = imgs[imgs.length - 1]
+    const start = () => {
+      if (myGen !== gen) return
+      setProgress(idx, dur / 1000)
+      timer = setTimeout(next, dur)
+    }
+    if (!img || img.complete) { start(); return }
+    let fired = false
+    const go = () => { if (!fired) { fired = true; start() } }
+    img.addEventListener('load', go, { once: true })
+    img.addEventListener('error', go, { once: true })
+    setTimeout(() => { if (myGen === gen) go() }, 3000)
   }
 
   function next(dir = 1) {
@@ -795,6 +814,25 @@ function startSlideshow() {
   document.addEventListener('keydown', onKey)
 
   render(0)
+}
+
+// Preload semua foto/video slideshow di belakang layar (gak ditampilkan).
+// Foto → new Image() = langsung ke-cache browser. Video → preload metadata
+// (video pertama 'auto' biar buffer awal ikut keisi). Dipanggil sejak boot,
+// jadi waktu boot → gate → modul uji kepake buat ngunduh semua media.
+function preloadMemories() {
+  ;(D.memories || []).forEach((m, i) => {
+    if (!m?.media_url) return
+    if (m.media_type === 'video') {
+      const v = document.createElement('video')
+      v.preload = i === 0 ? 'auto' : 'metadata'
+      v.muted = true
+      v.src = m.media_url
+    } else {
+      const im = new Image()
+      im.src = m.media_url
+    }
+  })
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -874,6 +912,10 @@ async function boot() {
     audioEl.preload = 'auto'
     audioEl.load()
   }
+
+  // Preload SEMUA media slideshow diem-dieman sejak sekarang — beberapa menit
+  // sebelum slideshow kejadian, jaringan lambat pun udah kebagi waktu unduh.
+  preloadMemories()
 
   // Admin preview: ?jump=report dll (butuh login admin utk preview=draft)
   const jump = params.get('jump')

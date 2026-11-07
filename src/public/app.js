@@ -635,7 +635,6 @@ function showServerBusy() {
         </div>
         <div class="busy-clockbox">
           <div class="busy-clock mono" id="busy-clock">--:--:--</div>
-          <div class="mono tiny muted">jam server = jam perangkat lu · biarin halaman ini kebuka, dia ubah sendiri pas waktunya</div>
         </div>
       </div>
     </div>

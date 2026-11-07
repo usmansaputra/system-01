@@ -169,11 +169,20 @@ const SCREENS = {
     const s = D.site
     // Judul dipecah per huruf → dianimasikan drop satu-satu (binder reveal)
     const chars = (str) => [...str].map((ch) => `<span class="rv-ch">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('')
+    // Sparkle kelap-kelip di sekitar neon
+    const sparks = [12, 30, 52, 68, 84, 44].map((x, i) =>
+      `<i class="neon-spark" style="left:${x}%; top:${18 + (i % 3) * 34}%; animation-delay:${(i * 0.47).toFixed(2)}s"></i>`).join('')
     return `
     <section class="screen reveal-screen" data-screen="reveal">
       <div class="reveal-body">
         <div class="reveal-kicker mono" data-anim>HARI INI · ${esc(fmtTanggal(s.birthday_date) || 'HARI SPESIAL')}</div>
-        <h1 class="reveal-title">${chars('SELAMAT ULANG TAHUN,')}<br>${chars(esc(ST.name).toUpperCase())}! 🎂</h1>
+        <!-- Neon sign: menyala flicker kaya lampu neon kamar (CSS animation) -->
+        <div class="neon-wrap" aria-hidden="true">
+          <div class="neon-glow"></div>
+          <div class="neon-sign">Selamat Ulang Tahun</div>
+          ${sparks}
+        </div>
+        <h1 class="reveal-title">${chars(esc(ST.name).toUpperCase())}! 🎂</h1>
         <p class="reveal-sub" data-anim>${esc(s.reveal_subtitle || '')}</p>
         <button id="rv-next" class="btn btn-love btn-big" data-anim>LIHAT GALERI KAMU →</button>
       </div>
@@ -227,6 +236,16 @@ const SCREENS = {
             </div>
             <div id="cake-count" class="mono cake-count"></div>
           </div>
+          <!-- KADO — muncul setelah semua lilin mati: tiup lilin → buka kado → surat -->
+          <div id="gift-scene" class="hidden">
+            <h1 class="soft-title cake-title">Ada satu kado terakhir…</h1>
+            <button id="gift-box" class="gift" aria-label="Buka kado">
+              <span class="gift-bow"></span>
+              <span class="gift-lid"><i class="gift-rib-v"></i></span>
+              <span class="gift-body"><i class="gift-rib-v"></i></span>
+            </button>
+            <div class="gift-hint mono tiny">tap kadonya buat membuka 🎁</div>
+          </div>
         </div>
       </div>
     </section>`
@@ -263,6 +282,8 @@ const SCREENS = {
     const photo = ST.selfie
       ? `<img src="${ST.selfie}" alt="foto pilot">`
       : `<span class="pc-initial">${esc((ST.name || '?').charAt(0).toUpperCase())}</span>`
+    // Kata-kata personal di kartu — diatur admin (site_settings.card_quote)
+    const quote = String(s.card_quote || '').trim() || 'Dicetak khusus, gak ada cadangannya ♡'
     return `
     <section class="screen" data-screen="end">
       <div class="screen-body center">
@@ -270,19 +291,30 @@ const SCREENS = {
           <div class="end-heart">♡</div>
           <h1 class="soft-title">THE END</h1>
           <p class="muted">With love, <b>${esc(s.sender_name || 'seseorang yang sayang kamu')}</b></p>
-          <div class="pilot-card">
-            <div class="pc-head mono">SIAP · KARTU PILOT TESTER</div>
-            <div class="pc-body">
-              <div class="pc-photo">${photo}</div>
-              <div class="pc-info">
-                <div class="pc-name">${esc(ST.name || 'Pilot')}</div>
-                <div class="pc-row mono">KELAS · ${esc(ST.className || '—')}</div>
-                <div class="pc-row mono">SESI · ${esc(ST.session)}</div>
-                <div class="pc-row mono ok-text">SEMUA MODUL LULUS ✓</div>
+          <!-- Lanyard: kartu "digantung" pake tali ID card + goyang pelan -->
+          <div class="pilot-hang">
+            <div class="pc-strap l"></div><div class="pc-strap r"></div>
+            <div class="pc-clip"></div>
+            <div class="pilot-card" id="pilot-card">
+              <div class="pc-glare"></div>
+              <div class="pc-head mono">SIAP · KARTU PILOT TESTER</div>
+              <div class="pc-body">
+                <div class="pc-photo">${photo}</div>
+                <div class="pc-info">
+                  <div class="pc-name">${esc(ST.name || 'Pilot')}</div>
+                  <div class="pc-row mono">KELAS · ${esc(ST.className || '—')}</div>
+                  <div class="pc-row mono">SESI · ${esc(ST.session)}</div>
+                  <div class="pc-row mono ok-text">SEMUA MODUL LULUS ✓</div>
+                  <div class="pc-quote">“${esc(quote)}”</div>
+                </div>
               </div>
+              <div class="pc-bar">
+                <div class="pc-barcode" aria-hidden="true"></div>
+                <div class="pc-bc-meta mono"><span>NO. ${esc(ST.session)}</span><span>BERLAKU: SELAMANYA</span></div>
+              </div>
+              <div class="pc-foot mono"><span>${esc(s.school_name || '')}</span><span>${esc(s.access_code || '')}</span></div>
+              <div class="pc-stamp mono">LULUS ✓</div>
             </div>
-            <div class="pc-foot mono"><span>${esc(s.school_name || '')}</span><span>${esc(s.access_code || '')}</span></div>
-            <div class="pc-stamp mono">LULUS ✓</div>
           </div>
           <p class="pc-hint muted tiny">screenshot kartu ini buat kenang-kenangan ya ♡</p>
           <div class="end-btns">

@@ -70,5 +70,21 @@ export const sfx = {
   tada: () => {
     [523, 659, 784, 1047].forEach((f, i) => tone({ f, t: 0.3, g: 0.05, when: i * 0.11 }))
     tone({ f: 1568, t: 0.55, g: 0.04, when: 0.46 })
+  },
+  // neon menyala (bztt… bztt… listrik kelasat-kelit)
+  neon: () => {
+    tone({ f: 118, t: 0.09, type: 'sawtooth', g: 0.03 })
+    tone({ f: 104, t: 0.07, type: 'sawtooth', g: 0.025, when: 0.16 })
+    tone({ f: 126, t: 0.14, type: 'sawtooth', g: 0.03, when: 0.3 })
+  },
+  // tutup kado terlempar (pop!)
+  pop: () => {
+    noise({ t: 0.1, g: 0.07, freq: 3400 })
+    tone({ f: 300, f2: 780, t: 0.12, type: 'triangle', g: 0.05 })
+  },
+  // cap stempel mendarat (duk!)
+  stamp: () => {
+    noise({ t: 0.07, g: 0.05, freq: 500 })
+    tone({ f: 150, f2: 68, t: 0.16, type: 'sine', g: 0.07 })
   }
 }

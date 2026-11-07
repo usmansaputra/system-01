@@ -25,7 +25,8 @@ export const DEMO_DATA = {
     test2_name: 'Verifikasi Wajah',
     test3_name: 'Uji Notifikasi',
     anomaly_text: 'Clock-in terakhir pada {date} pukul 07:15 tercatat TIDAK VALID oleh sistem. Status: PENDING MANUAL REVIEW.',
-    reveal_subtitle: 'Sistem absensinya cuma dalih biar lu nggak curiga. Semua ini gua siapin khusus buat lu.'
+    reveal_subtitle: 'Sistem absensinya cuma dalih biar lu nggak curiga. Semua ini gua siapin khusus buat lu.',
+    card_quote: 'Pilot #001 — favoritnya sistem, selamanya ♡'
   },
   memories: [
     { id: 'm1', media_type: 'image', media_url: svgPh('#ff9ec7', '#c084fc', '📸', 'Slide contoh 1 — ganti foto asli di /admin'), title: 'Kenangan Pertama', caption: 'Awal semua cerita. Ganti slide ini dengan foto asli lu ya :)', duration_sec: 5, transition: 'fade', sort_order: 1 },

@@ -276,15 +276,17 @@ const BINDERS = {
     $('#audio-chip')?.addEventListener('click', () => audioEl.play().catch(() => {}))
   },
 
-  // 5. REVEAL — kelopak jatuh + judul drop per huruf
+  // 5. REVEAL — neon menyala + kelopak jatuh + nama drop per huruf
   reveal() {
     fx.setMode('petals')
     fx.petals(30)
     sfx.chime()
+    sfx.neon() // bztt — listrik neon mulai nyala
     setTimeout(() => fx.burst(140), 350)
     setTimeout(() => fx.burst(100), 1400)
+    // Neon nyala dulu (CSS flicker ±1s), nama baru turun huruf demi huruf
     gsap.from('.rv-ch', {
-      y: -80, opacity: 0, rotate: () => -14 + Math.random() * 28,
+      delay: 0.9, y: -80, opacity: 0, rotate: () => -14 + Math.random() * 28,
       duration: 0.85, stagger: 0.045, ease: 'back.out(1.7)'
     })
     // FIX: reveal index 4, memory index 5 → harus unlock(6) dulu, kalau gak
@@ -347,6 +349,39 @@ const BINDERS = {
     fx.balloons(10)
     fx.hearts(24)
     sfx.chime()
+    // Cap "LULUS ✓" di-STEMPEL telat ±1 detik setelah kartu muncul (duk!)
+    const stamp = $('.pc-stamp')
+    if (stamp) {
+      gsap.timeline({ delay: 1.05 })
+        .fromTo(stamp,
+          { scale: 2.6, opacity: 0, rotate: 26 },
+          { scale: 0.94, opacity: 0.85, rotate: 5, duration: 0.3, ease: 'power3.in' })
+        .to(stamp, { scale: 1, rotate: 8, duration: 0.22, ease: 'back.out(3)' })
+        .add(() => sfx.stamp(), 0.3)
+    }
+    // Kartu ngikutin jari/pointer (tilt 3D ala kartu hologram) + kilau glare
+    const card = $('#pilot-card')
+    if (card) {
+      const glare = $('.pc-glare', card)
+      const onMove = (e) => {
+        const r = card.getBoundingClientRect()
+        const x = (e.clientX - r.left) / r.width - 0.5
+        const y = (e.clientY - r.top) / r.height - 0.5
+        card.style.transform = `rotateX(${(-y * 10).toFixed(2)}deg) rotateY(${(x * 12).toFixed(2)}deg)`
+        if (glare) {
+          glare.style.setProperty('--gx', ((x + 0.5) * 100).toFixed(1) + '%')
+          glare.style.setProperty('--gy', ((y + 0.5) * 100).toFixed(1) + '%')
+          glare.style.opacity = '1'
+        }
+      }
+      const onLeave = () => {
+        card.style.transform = ''
+        if (glare) glare.style.opacity = '0'
+      }
+      card.addEventListener('pointermove', onMove)
+      card.addEventListener('pointerleave', onLeave)
+      card.addEventListener('pointercancel', onLeave)
+    }
     $('#end-replay').addEventListener('click', () => { sfx.click(); show('memory') })
     $('#end-reset').addEventListener('click', () => {
       if (!confirm('Balik ke layar awal? (Semua progress pengujian direset)')) return
@@ -408,10 +443,46 @@ function bindCandles() {
         flashWhite(420)
         fx.burst(220)
         setTimeout(() => fx.burst(120), 350)
-        setTimeout(() => { unlock(8); show('letter') }, 1000)
+        // Jangan langsung loncat ke surat — ada kado dulu:
+        // alurnya jadi: tiup lilin → buka kado → surat.
+        setTimeout(showGift, 1100)
       }
     })
   })
+}
+
+// Kado muncul menggantikan scene kue (abis semua lilin mati)
+function showGift() {
+  const cake = $('#cake-scene')
+  const gift = $('#gift-scene')
+  if (!cake || !gift) { unlock(8); show('letter'); return }
+  gsap.to(cake, {
+    opacity: 0, y: -24, duration: 0.5, ease: 'power2.in',
+    onComplete: () => {
+      cake.classList.add('hidden')
+      gift.classList.remove('hidden')
+      gsap.from(gift, { opacity: 0, y: 40, duration: 0.7, ease: 'power3.out' })
+      gsap.from('#gift-box', { scale: 0.4, rotate: -8, duration: 0.9, ease: 'back.out(1.8)', delay: 0.15 })
+      $('#gift-box').addEventListener('click', openGift, { once: true })
+    }
+  })
+}
+
+// Kado dibuka: tutup terbang + confetti → lanjut ke surat
+function openGift() {
+  const btn = $('#gift-box')
+  if (!btn || btn.disabled) return
+  btn.disabled = true
+  sfx.pop()
+  fx.burst(240)
+  setTimeout(() => fx.burst(140), 300)
+  fx.hearts(16)
+  const lid = btn.querySelector('.gift-lid')
+  const bow = btn.querySelector('.gift-bow')
+  if (lid) gsap.to(lid, { y: -150, rotate: -24, opacity: 0, duration: 0.75, ease: 'power2.out' })
+  if (bow) gsap.to(bow, { y: -150, rotate: 18, opacity: 0, duration: 0.75, ease: 'power2.out' })
+  gsap.to(btn, { scale: 0.92, duration: 0.22, yoyo: true, repeat: 1, ease: 'power2.inOut' })
+  setTimeout(() => { flashWhite(380); unlock(8); show('letter') }, 1150)
 }
 
 // ─────────────────────────────────────────────────────────────

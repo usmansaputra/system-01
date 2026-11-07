@@ -407,6 +407,7 @@ export const PANELS = {
         </div>
         ${textarea('Teks anomali di Laporan Final', 'ap-anom', s.anomaly_text, 'Gunakan {date} untuk tanggal ultah otomatis')}
         ${textarea('Subjudul layar reveal', 'ap-reveal', s.reveal_subtitle)}
+        ${input('Kata-kata di kartu pilot', 'ap-quote', s.card_quote, { hint: 'Muncul di kartu di layar akhir, di bawah "SEMUA MODUL LULUS ✓". Kosongkan untuk pakai default.' })}
       </div>
       <div class="adm-card">
         <h3>Data personal</h3>
@@ -436,6 +437,7 @@ export const PANELS = {
           access_code: g('#ap-code'),
           anomaly_text: $('#ap-anom', root).value,
           reveal_subtitle: $('#ap-reveal', root).value,
+          card_quote: $('#ap-quote', root).value,
           recipient_name: g('#ap-rec'), sender_name: g('#ap-sender'),
           birthday_date: g('#ap-bday')
         })

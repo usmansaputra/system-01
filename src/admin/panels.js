@@ -281,7 +281,7 @@ export const PANELS = {
     const m = await adminApi.getOne('music_settings')
     root.innerHTML = `
       <div class="adm-card">
-        <h3>Musik latar (mulai otomatis di Laporan Final)</h3>
+        <h3>Musik latar (mulai otomatis setelah glitch di Laporan Final)</h3>
         <div class="music-now">
           <span class="ico">♪</span>
           <div style="flex:1">
@@ -299,10 +299,7 @@ export const PANELS = {
           ${input('Judul lagu', 'm-title', m.title)}
           ${input('Artis', 'm-artist', m.artist)}
         </div>
-        <div class="split">
-          ${input('Delay glitch reveal (detik)', 'm-delay', m.start_delay_sec, { type: 'number', hint: 'Musik mulai di Laporan Final; reveal glitch muncul setelah delay ini (default 4)' })}
-          ${input('Volume (0–1)', 'm-vol', m.volume, { type: 'number', hint: '0.2 pelan · 0.8 standar · 1 keras' })}
-        </div>
+        ${input('Volume (0–1)', 'm-vol', m.volume, { type: 'number', hint: '0.2 pelan · 0.8 standar · 1 keras' })}
         <button id="m-save" class="btn" style="margin-top:12px">Simpan Music Settings</button>
       </div>`
 
@@ -332,7 +329,6 @@ export const PANELS = {
           music_url: $('#m-url', root).value.trim(),
           title: $('#m-title', root).value.trim(),
           artist: $('#m-artist', root).value.trim(),
-          start_delay_sec: Math.max(0, Number($('#m-delay', root).value) || 4),
           volume: Math.min(1, Math.max(0, Number($('#m-vol', root).value) || 0.8))
         })
         toast('Music settings tersimpan ✓', 'ok')

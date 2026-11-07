@@ -242,20 +242,20 @@ const BINDERS = {
     }
   },
 
-  // 4. REPORT — MUSIK MULAI DI SINI + glitch anomali
+  // 4. REPORT — glitch jalan pas tombol anomali DIKLIK; musik mulai setelah glitch selesai
   report() {
-    startMusic()
     $('#anomaly-btn').addEventListener('click', () => {
-      if (ST.revealed) { openReveal(); return }
-      runAnomalyGlitch().then(openReveal)
+      // Sudah reveal / glitch pernah jalan → tombol sekarang "BUKA SEKARANG ♡" → langsung buka
+      if (ST.revealed || glitchDone) { openReveal(); return }
+      glitchDone = true
+      const btn = $('#anomaly-btn')
+      btn.disabled = true // kunci tombol selama scene glitch (cegah dobel-klik)
+      runAnomalyGlitch().then(() => {
+        btn.disabled = false
+        startMusic() // 🎵 musik baru keluar SETELAH scene layar geter selesai
+      })
     })
     $('#audio-chip')?.addEventListener('click', () => audioEl.play().catch(() => {}))
-
-    if (!ST.revealed && !glitchDone) {
-      glitchDone = true
-      const delay = ((D.music?.start_delay_sec ?? 4) + 1) * 1000
-      setTimeout(() => { if (currentScreen === 'report' && !ST.revealed) runAnomalyGlitch() }, delay)
-    }
   },
 
   // 5. REVEAL
@@ -264,7 +264,9 @@ const BINDERS = {
     setTimeout(() => fx.burst(140), 300)
     setTimeout(() => fx.burst(100), 1100)
     setTimeout(() => fx.burst(100), 2000)
-    $('#rv-next').addEventListener('click', () => show('memory'))
+    // FIX: reveal index 4, memory index 5 → harus unlock(6) dulu, kalau gak
+    // router memental balik ke reveal (bug "LIHAT GALERI KAMU" gak jalan).
+    $('#rv-next').addEventListener('click', () => { unlock(6); show('memory') })
   },
 
   // 6. MEMORY (slideshow)

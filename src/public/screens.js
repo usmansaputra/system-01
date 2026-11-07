@@ -133,7 +133,7 @@ const SCREENS = {
     </section>`
   },
 
-  // ── 4. FINAL TEST REPORT (MUSIK MULAI DI SINI) ──────────────
+  // ── 4. FINAL TEST REPORT (KLIK → GLITCH → MUSIK MULAI) ──────
   report({ D, ST }) {
     const s = D.site
     const anomaly = (s.anomaly_text || '').replace('{date}', fmtTanggal(s.birthday_date) || 'hari ini')

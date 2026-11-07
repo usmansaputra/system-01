@@ -15,8 +15,8 @@ function hintFor(msg) {
       'lalu klik tombol <i>Keluar &amp; Login Ulang</i> di bawah.'
   if (/Invalid API key|Invalid key/i.test(m))
     return 'Anon key salah / typo / terpotong. Salin ulang dari Project Settings → API → <i>anon public</i>.'
-  if (/PGRST205|schema cache|does not exist|relation/i.test(m))
-    return 'Tabel belum ada di Supabase → buka SQL Editor, paste isi <b>schema.sql</b>, klik Run, lalu refresh halaman ini.'
+  if (/PGRST205|PGRST204|schema cache|does not exist|relation|column/i.test(m))
+    return 'Tabel/kolom belum ada di Supabase → buka SQL Editor, paste ulang isi <b>schema.sql</b> (aman, data gak hilang), klik Run, lalu refresh halaman ini.'
   if (/PGRST116|no rows|multiple \(or no\)/i.test(m))
     return 'Baris data id=1 tidak terbaca → jalankan schema.sql (dia mengisi baris awal) atau cek RLS policy untuk user <i>authenticated</i>.'
   if (/42501|row-level security|violates/i.test(m))

@@ -4,7 +4,7 @@ import { loadExperience, canPreviewDraft, isDemo, sendReply } from '../shared/st
 import { $, $$, esc, sleep, clamp, errMsg, makeSelfieDataURL } from '../shared/utils.js'
 import { FX, flashWhite, scramble } from './fx.js'
 import { sfx } from '../shared/sfx.js'
-import { SCREENS } from './screens.js'
+import { SCREENS, topbar } from './screens.js'
 
 // ─────────────────────────────────────────────────────────────
 // STATE
@@ -174,6 +174,10 @@ const BINDERS = {
   tests() {
     const idx = ST.tests.filter(Boolean).length
 
+    // Semua modul udah selesai tapi nyangkut di layar tests (mis. ?jump=tests
+    // saat semua modul sudah lulus) → jangan render form kosong, antar langsung.
+    if (idx >= 3) { unlock(4); show('report'); return }
+
     if (idx === 0) {
       $('#t1-form').addEventListener('submit', async (e) => {
         e.preventDefault()
@@ -245,7 +249,6 @@ const BINDERS = {
         $('#t3-next').classList.remove('hidden')
         ST.tests[2] = true; saveState()
         $('#t3-next').addEventListener('click', async () => {
-          unlock(4)
           // layar "menyusun laporan" sebentar
           const app = document.getElementById('app')
           app.innerHTML = `
@@ -254,6 +257,11 @@ const BINDERS = {
               <div class="mono">Menyusun laporan final…</div>
             </div>`
           await sleep(2000)
+          // JADWAL "SERVER SIBUK": sebelum jam buka, laporan ditahan server.
+          // Drama-nya: dia udah selesai semua modul, eh ditampik pas paling penasaran.
+          const at = maintenanceAt()
+          if (at && Date.now() < at.getTime() && !isBypass()) { showServerBusy(); return }
+          unlock(4)
           show('report')
         })
       })
@@ -571,6 +579,107 @@ function openReveal() {
 }
 
 // ─────────────────────────────────────────────────────────────
+// JADWAL "SERVER SIBUK" (pemeliharaan terjadwal)
+// D.site.maintenance_at = 'YYYY-MM-DDTHH:mm' — TANPA zona waktu, dan new Date()
+// mem-parsing format itu sebagai waktu LOKAL device → "00:00" artinya 00:00
+// jam HP penerima, otomatis ikut zona waktunya. Kosong = fitur mati.
+// Bypass ?preview= / ?jump= (jalur admin) gak pernah kena blok ini.
+// ─────────────────────────────────────────────────────────────
+const isBypass = () => params.has('jump') || params.has('preview')
+
+function maintenanceAt() {
+  const v = String(D?.site?.maintenance_at || '').trim()
+  if (!v) return null
+  // Dukungan kecil buat tes (mode demo): '600s' = 600 detik dari sekarang.
+  // (Dipake E2E; hindari '+' karena di URL query '+' ke-decode jadi spasi.)
+  const rel = v.match(/^(?:\+)?(\d+(?:\.\d+)?)s?$/)
+  const t = rel ? new Date(Date.now() + parseFloat(rel[1]) * 1000) : new Date(v)
+  return isNaN(t.getTime()) ? null : t
+}
+
+function showServerBusy() {
+  const s = D.site || {}
+  const app = document.getElementById('app')
+  const at = maintenanceAt()
+  const p2 = (n) => String(n).padStart(2, '0')
+  const whenTxt = at
+    ? at.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' }) +
+      ' · ' + p2(at.getHours()) + ':' + p2(at.getMinutes())
+    : '—'
+
+  app.innerHTML = `
+  <section class="screen" data-screen="busy">
+    ${topbar(s, '<span class="pill">MAINTENANCE</span>')}
+    <div class="screen-body center">
+      <div class="glass card wide busy-card" data-anim>
+        <div class="card-kicker mono">STATUS SERVER · ${esc(s.system_name || 'SIAP')} ${esc(s.system_version || '')}</div>
+        <div id="busy-wait">
+          <div class="busy-head"><span class="busy-dot"></span><h1>503 — SERVER SIBUK</h1></div>
+          <p class="muted">Server sedang menjalani <b>pemeliharaan terjadwal</b>. Semua modul uji lu
+          udah <b class="ok-text">LULUS ✓</b>, tapi laporan final sementara ditahan sama server.</p>
+          <div class="term mono busy-log">
+            <div class="term-line">&gt; modul uji 3/3 ................ <b class="ok-text">LULUS ✓</b></div>
+            <div class="term-line">&gt; pemeliharaan terjadwal ........ <b class="busy-amber">BERJALAN</b></div>
+            <div class="term-line">&gt; laporan final ................. <b class="busy-amber">DITAHAN</b></div>
+            <div class="term-line">&gt; kembali online ................ ${esc(whenTxt)}</div>
+          </div>
+        </div>
+        <div id="busy-online" class="hidden">
+          <div class="passline">✓ SERVER KEMBALI ONLINE — pemeliharaan selesai tepat waktu</div>
+          <div class="term mono busy-log">
+            <div class="term-line">&gt; verifikasi jadwal ............. <b class="ok-text">SELESAI</b></div>
+            <div class="term-line">&gt; sesi ${esc(ST.session)} .. <b class="ok-text">DITEMUKAN</b></div>
+            <div class="term-line">&gt; laporan final ................. <b class="ok-text">SIAP DIBUKA</b></div>
+          </div>
+          <button id="busy-open" class="btn btn-block">BUKA LAPORAN SEKARANG →</button>
+        </div>
+        <div class="busy-clockbox">
+          <div class="busy-clock mono" id="busy-clock">--:--:--</div>
+          <div class="mono tiny muted">jam server = jam perangkat lu · biarin halaman ini kebuka, dia ubah sendiri pas waktunya</div>
+        </div>
+      </div>
+    </div>
+  </section>`
+
+  const clockEl = $('#busy-clock')
+  const tickClock = () => {
+    const d = new Date()
+    clockEl.textContent = `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`
+  }
+  tickClock()
+  const clockTimer = setInterval(tickClock, 1000)
+
+  const goOnline = () => {
+    $('#busy-wait').classList.add('hidden')
+    $('#busy-online').classList.remove('hidden')
+    sfx.ding()
+    gsap.from('#busy-online', { opacity: 0, y: 18, duration: 0.6, ease: 'power2.out' })
+  }
+
+  // Udah lewat jam buka sejak awal (buka ulang setelah jam 12) → langsung mode online
+  if (at && Date.now() >= at.getTime()) goOnline()
+  else sfx.err() // bztt — server nolak
+
+  // Ngecek tiap detik → tepat jam buka layar berubah sendiri (tanpa refresh)
+  const flip = setInterval(() => {
+    if (!at || Date.now() < at.getTime()) return
+    clearInterval(flip)
+    goOnline()
+  }, 1000)
+
+  $('#busy-open').addEventListener('click', () => {
+    sfx.click()
+    clearInterval(clockTimer); clearInterval(flip)
+    app.innerHTML = `
+      <div class="compile-overlay">
+        <div class="spinner"></div>
+        <div class="mono">Memulihkan sesi… membuka laporan final…</div>
+      </div>`
+    setTimeout(() => { unlock(4); show('report') }, 1400)
+  })
+}
+
+// ─────────────────────────────────────────────────────────────
 // SLIDESHOW KENANGAN
 // ─────────────────────────────────────────────────────────────
 function startSlideshow() {
@@ -748,6 +857,13 @@ async function boot() {
     document.getElementById('app').innerHTML = SCREENS.nopublish()
     return
   }
+
+  // ⚙️ MODE DEMO SAJA: ?maintenance=YYYY-MM-DDTHH:mm (atau '+8' = 8 detik dari sekarang)
+  // buat ngetes layar SERVER SIBUK tanpa Supabase. Di produksi param ini diabaikan.
+  if (isDemo && params.get('maintenance')) {
+    D.site = { ...(D.site || {}), maintenance_at: params.get('maintenance') }
+  }
+
   if (bootP) await bootP // boot selesai dulu, baru layar pertama muncul
   applyAppearance()
 
@@ -771,6 +887,17 @@ async function boot() {
   }
 
   const start = jump && ORDER.includes(jump) ? jump : ORDER[ST.unlocked - 1]
+
+  // Semua modul selesai tapi masih nanggung di depan "SERVER SIBUK"
+  // (refresh / buka ulang sebelum jam buka) → antar ke layar status server.
+  // Udah lewat jam buka (atau fiturnya dimatiin) → langsung lolos ke laporan.
+  if (!jump && !params.has('preview') && start === 'tests' && ST.tests.every(Boolean)) {
+    const at = maintenanceAt()
+    if (at && Date.now() < at.getTime()) { showServerBusy(); return }
+    unlock(4)
+    show('report')
+    return
+  }
   show(start)
 }
 

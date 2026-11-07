@@ -418,6 +418,10 @@ export const PANELS = {
         ${input('Tanggal ulang tahun', 'ap-bday', s.birthday_date, { type: 'date', hint: 'Dipakai di anomali & layar reveal' })}
       </div>
       <div class="adm-card">
+        <h3>Jadwal "Server Sibuk" (opsional)</h3>
+        ${input('Server kembali online pada', 'ap-maint', s.maintenance_at, { type: 'datetime-local', hint: 'Kosong = fitur mati. Sebelum waktu ini, penerima yang selesai semua modul uji ditampik layar SERVER SIBUK (jam mengikuti jam HP dia). Tepat pada waktunya layar berubah sendiri jadi SERVER KEMBALI ONLINE. Wajib klik Publish setelah mengubah.' })}
+      </div>
+      <div class="adm-card">
         <h3>Warna</h3>
         <div class="split">
           ${input('Aksen sebelum reveal', 'ap-c1', a.accent_before, { type: 'color' })}
@@ -439,7 +443,8 @@ export const PANELS = {
           reveal_subtitle: $('#ap-reveal', root).value,
           card_quote: $('#ap-quote', root).value,
           recipient_name: g('#ap-rec'), sender_name: g('#ap-sender'),
-          birthday_date: g('#ap-bday')
+          birthday_date: g('#ap-bday'),
+          maintenance_at: g('#ap-maint')
         })
         await adminApi.saveOne('appearance_settings', {
           accent_before: g('#ap-c1'), accent_after: g('#ap-c2'), bg_after: g('#ap-c3')

@@ -182,7 +182,7 @@ const SCREENS = {
           <div class="neon-sign">Selamat Ulang Tahun</div>
           ${sparks}
         </div>
-        <h1 class="reveal-title">${chars(esc(ST.name).toUpperCase())}! 🎂</h1>
+        <h1 class="reveal-title">${chars(esc(ST.name || 'Kamu').toUpperCase())}! 🎂</h1>
         <p class="reveal-sub" data-anim>${esc(s.reveal_subtitle || '')}</p>
         <button id="rv-next" class="btn btn-love btn-big" data-anim>LIHAT GALERI KAMU →</button>
       </div>

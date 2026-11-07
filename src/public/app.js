@@ -1,8 +1,9 @@
 import gsap from 'gsap'
 import './style.css'
-import { loadExperience, canPreviewDraft, isDemo } from '../shared/store.js'
-import { $, $$, esc, sleep, clamp, errMsg } from '../shared/utils.js'
+import { loadExperience, canPreviewDraft, isDemo, sendReply } from '../shared/store.js'
+import { $, $$, esc, sleep, clamp, errMsg, makeSelfieDataURL } from '../shared/utils.js'
 import { FX, flashWhite, scramble } from './fx.js'
+import { sfx } from '../shared/sfx.js'
 import { SCREENS } from './screens.js'
 
 // ─────────────────────────────────────────────────────────────
@@ -20,14 +21,18 @@ function defState() {
     session: 'SSN-' + y + '-' + Math.floor(1000 + Math.random() * 9000),
     absId: 'ABS-' + Math.floor(2000 + Math.random() * 900),
     tests: [false, false, false],
-    revealed: false
+    revealed: false,
+    selfie: '' // dataURL kecil — buat Kartu Pilot di layar akhir (lokal, gak diupload)
   }
 }
 function loadState() {
   try { return { ...defState(), ...(JSON.parse(localStorage.getItem(STATE_KEY)) || {}) } }
   catch { return defState() }
 }
-function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(ST)) }
+function saveState() {
+  try { localStorage.setItem(STATE_KEY, JSON.stringify(ST)) }
+  catch { /* kuota localStorage penuh / mode privat → biarkan, fitur tetap jalan */ }
+}
 
 let D = null            // data (published / draft / demo)
 let ST = loadState()    // state penerima
@@ -112,6 +117,7 @@ async function typeLines(sel, lines, baseDelay = 420) {
   const el = $(sel)
   el.classList.remove('hidden')
   for (const l of lines) {
+    sfx.key() // tick terminal tiap baris log
     const d = document.createElement('div')
     d.className = 'term-line ' + (l.c || '')
     d.textContent = '> ' + l.t
@@ -141,11 +147,13 @@ const BINDERS = {
         err.classList.remove('hidden'); return
       }
       if (!okName || !okCode) {
+        sfx.err() // buzz kode salah
         err.textContent = 'Nama / kode akses tidak cocok dengan data pilot. Coba cek lagi.'
         err.classList.remove('hidden')
         gsap.fromTo('.gate-card', { x: -8 }, { x: 0, duration: 0.5, ease: 'elastic.out(1,0.3)' })
         return
       }
+      sfx.click()
       ST.name = name
       saveState()
       unlock(2)
@@ -156,6 +164,7 @@ const BINDERS = {
   // 2. DASHBOARD
   dashboard() {
     $('#btn-start').addEventListener('click', () => {
+      sfx.click()
       unlock(3)
       show('tests')
     })
@@ -179,13 +188,14 @@ const BINDERS = {
         ])
         $('#t1-done').classList.remove('hidden')
         $('#t1-next').classList.remove('hidden')
+        sfx.ding() // absensi sukses
         ST.tests[0] = true; saveState()
         $('#t1-next').addEventListener('click', () => show('tests'))
       })
     }
 
     if (idx === 1) {
-      $('#t2-file').addEventListener('change', (e) => {
+      $('#t2-file').addEventListener('change', async (e) => {
         const f = e.target.files?.[0]
         if (!f) return
         const url = URL.createObjectURL(f)
@@ -193,6 +203,11 @@ const BINDERS = {
         $('#t2-preview').classList.remove('hidden')
         $('#t2-frame').classList.add('hidden')
         $('#t2-run').disabled = false
+        sfx.click()
+        // Simpan versi kecil foto verifikasi buat Kartu Pilot di layar akhir.
+        // dataURL → localStorage (lokal di HP dia, TIDAK dikirim ke server).
+        const dataUrl = await makeSelfieDataURL(f)
+        if (dataUrl) { ST.selfie = dataUrl; saveState() }
       })
       $('#t2-run').addEventListener('click', async () => {
         $('#t2-run').disabled = true
@@ -207,6 +222,7 @@ const BINDERS = {
         ], 300)
         $('#t2-done').classList.remove('hidden')
         $('#t2-next').classList.remove('hidden')
+        sfx.ding() // match ditemukan
         ST.tests[1] = true; saveState()
         $('#t2-next').addEventListener('click', () => show('tests'))
       })
@@ -215,9 +231,11 @@ const BINDERS = {
     if (idx === 2) {
       $('#t3-send').addEventListener('click', async () => {
         $('#t3-send').disabled = true
+        sfx.click()
         const n = $('#t3-notif')
         n.classList.remove('hidden')
         n.classList.add('drop-in')
+        sfx.ding() // notifikasi masuk
         await sleep(1200)
         await typeLines('#t3-log', [
           { t: 'notifikasi terkirim ke perangkat pilot… OK', c: 'ok-text' },
@@ -258,15 +276,20 @@ const BINDERS = {
     $('#audio-chip')?.addEventListener('click', () => audioEl.play().catch(() => {}))
   },
 
-  // 5. REVEAL
+  // 5. REVEAL — kelopak jatuh + judul drop per huruf
   reveal() {
-    fx.setMode('ambient')
-    setTimeout(() => fx.burst(140), 300)
-    setTimeout(() => fx.burst(100), 1100)
-    setTimeout(() => fx.burst(100), 2000)
+    fx.setMode('petals')
+    fx.petals(30)
+    sfx.chime()
+    setTimeout(() => fx.burst(140), 350)
+    setTimeout(() => fx.burst(100), 1400)
+    gsap.from('.rv-ch', {
+      y: -80, opacity: 0, rotate: () => -14 + Math.random() * 28,
+      duration: 0.85, stagger: 0.045, ease: 'back.out(1.7)'
+    })
     // FIX: reveal index 4, memory index 5 → harus unlock(6) dulu, kalau gak
     // router memental balik ke reveal (bug "LIHAT GALERI KAMU" gak jalan).
-    $('#rv-next').addEventListener('click', () => { unlock(6); show('memory') })
+    $('#rv-next').addEventListener('click', () => { sfx.click(); unlock(6); show('memory') })
   },
 
   // 6. MEMORY (slideshow)
@@ -274,30 +297,26 @@ const BINDERS = {
     startSlideshow()
   },
 
-  // 7. SURPRISE
+  // 7. SURPRISE — kue + tiup lilin
   surprise() {
-    $('#sp-btn').addEventListener('click', async () => {
+    $('#sp-btn').addEventListener('click', () => {
       $('#sp-btn').disabled = true
-      const c = $('#sp-count')
-      c.classList.remove('hidden')
-      for (const n of ['3', '2', '1']) {
-        c.textContent = n
-        gsap.fromTo(c, { scale: 0.4, opacity: 0 }, { scale: 1.6, opacity: 1, duration: 0.5, ease: 'back.out(2)' })
-        await sleep(900)
-      }
-      flashWhite(420)
-      fx.burst(220)
-      setTimeout(() => fx.burst(120), 350)
-      unlock(8)
-      await sleep(650)
-      show('letter')
+      sfx.click()
+      $('#sp-intro').classList.add('hidden')
+      const scene = $('#cake-scene')
+      scene.classList.remove('hidden')
+      gsap.from(scene, { opacity: 0, scale: 0.88, y: 30, duration: 0.8, ease: 'back.out(1.4)' })
+      bindCandles()
     })
   },
 
-  // 8. LETTER (amplop terbuka)
+  // 8. LETTER — amplop terbuka → surat diketik live
   letter() {
+    fx.setMode('balloons')
+    fx.balloons(8)
     $('#lt-open').addEventListener('click', () => {
       $('#lt-open').disabled = true
+      sfx.paper() // suara kertas
       const tl = gsap.timeline()
       tl.to('.env-seal', { opacity: 0, scale: 0.5, duration: 0.3 })
         .to('.env-flap', { rotateX: 180, duration: 0.9, ease: 'power2.inOut', transformOrigin: 'top center' })
@@ -311,20 +330,24 @@ const BINDERS = {
           const card = $('#letter-card')
           card.classList.remove('hidden')
           gsap.from(card, { opacity: 0, y: 60, scale: 0.95, duration: 0.8, ease: 'power3.out' })
+          startTyping()
         })
       fx.hearts(20)
     })
     $('#lt-next').addEventListener('click', () => {
+      sfx.click()
       unlock(9)
       show('end')
     })
   },
 
-  // 9. ENDING
+  // 9. ENDING — balon + kartu pilot + balas pesan
   end() {
-    fx.setMode('ambient')
-    fx.hearts(30)
-    $('#end-replay').addEventListener('click', () => show('memory'))
+    fx.setMode('balloons')
+    fx.balloons(10)
+    fx.hearts(24)
+    sfx.chime()
+    $('#end-replay').addEventListener('click', () => { sfx.click(); show('memory') })
     $('#end-reset').addEventListener('click', () => {
       if (!confirm('Balik ke layar awal? (Semua progress pengujian direset)')) return
       ST = defState()
@@ -335,7 +358,109 @@ const BINDERS = {
       document.title = 'SIAP — Portal Pilot Tester'
       show('gate', { force: true })
     })
+    // Balas pesan → tersimpan di tabel replies (dibaca admin di /admin)
+    $('#rp-send')?.addEventListener('click', async () => {
+      const btn = $('#rp-send')
+      const body = $('#rp-body').value.trim()
+      const errEl = $('#rp-err')
+      if (!body) {
+        errEl.textContent = 'Tulis dulu balasannya ya ♡'
+        errEl.classList.remove('hidden')
+        return
+      }
+      btn.disabled = true; btn.textContent = 'MENGIRIM…'
+      try {
+        const r = await sendReply(ST.name || 'Penerima', body)
+        $('#rp-form').classList.add('hidden')
+        const ok = $('#rp-ok')
+        ok.textContent = r?.demo
+          ? 'Terkirim ♡ (mode demo — balasan belum tersimpan di database)'
+          : 'Terkirim ♡ — pesan lu udah sampe ke pengirim. Makasih ya!'
+        ok.classList.remove('hidden')
+        sfx.ding()
+      } catch (e) {
+        btn.disabled = false; btn.textContent = 'KIRIM BALASAN'
+        errEl.textContent = 'Gagal mengirim: ' + errMsg(e)
+        errEl.classList.remove('hidden')
+      }
+    })
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// KUE — tiup lilin satu-satu
+// ─────────────────────────────────────────────────────────────
+function bindCandles() {
+  const candles = $$('#cake-scene .candle')
+  const cnt = $('#cake-count')
+  let left = candles.length
+  const upd = () => { cnt.textContent = left > 0 ? left + ' lilin tersisa…' : 'semua lilin mati ♡' }
+  upd()
+  candles.forEach((c) => {
+    c.addEventListener('click', () => {
+      if (c.classList.contains('out')) return
+      c.classList.add('out')
+      sfx.poof()
+      left--
+      upd()
+      if (left === 0) {
+        sfx.tada()
+        flashWhite(420)
+        fx.burst(220)
+        setTimeout(() => fx.burst(120), 350)
+        setTimeout(() => { unlock(8); show('letter') }, 1000)
+      }
+    })
+  })
+}
+
+// ─────────────────────────────────────────────────────────────
+// SURAT — diketik live paragraf demi paragraf (tap = langsung selesai)
+// ─────────────────────────────────────────────────────────────
+function startTyping() {
+  const ps = $$('#letter-card p.type-p')
+  const sig = $('#letter-card .sign')
+  const nextBtn = $('#lt-next')
+  const hint = $('#letter-card .type-hint')
+  const paras = ps.map((p) => p.getAttribute('data-txt') || '')
+  let pi = 0, ci = 0, done = false, timer = null
+
+  const cursor = document.createElement('span')
+  cursor.className = 'type-cursor'
+
+  const finish = () => {
+    if (done) return
+    done = true
+    clearTimeout(timer)
+    cursor.remove()
+    hint?.classList.add('hidden')
+    ps.forEach((p, i) => { p.innerHTML = esc(paras[i]).replace(/\n/g, '<br>') })
+    sig?.classList.remove('hidden')
+    nextBtn?.classList.remove('hidden')
+    if (sig && nextBtn) gsap.fromTo([sig, nextBtn], { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power2.out' })
+  }
+
+  const tick = () => {
+    if (done) return
+    if (pi >= paras.length) { finish(); return }
+    const p = ps[pi]
+    const txt = paras[pi]
+    if (ci < txt.length) {
+      const ch = txt[ci]
+      if (ch === '\n') p.appendChild(document.createElement('br'))
+      else p.appendChild(document.createTextNode(ch))
+      p.appendChild(cursor)
+      if (ci % 3 === 0) sfx.key()
+      ci++
+      timer = setTimeout(tick, 26 + Math.random() * 34)
+    } else {
+      pi++; ci = 0
+      timer = setTimeout(tick, 260)
+    }
+  }
+
+  $('#letter-card').addEventListener('click', () => { if (!done) finish() })
+  tick()
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -343,6 +468,7 @@ const BINDERS = {
 // ─────────────────────────────────────────────────────────────
 function runAnomalyGlitch() {
   return new Promise((resolve) => {
+    sfx.glitch() // dengung glitch
     const box = $('#anomaly-box')
     const txt = $('#anomaly-text')
     box.classList.add('glitching')
@@ -492,15 +618,58 @@ function startSlideshow() {
 }
 
 // ─────────────────────────────────────────────────────────────
+// BOOT SEQUENCE — layar boot ala BIOS sebelum Access Gate (±2 detik)
+// Skipped kalau ?jump= / ?preview= (admin preview, biar gak nunggu terus)
+// ─────────────────────────────────────────────────────────────
+function showBootOverlay() {
+  return new Promise((resolve) => {
+    const el = document.createElement('div')
+    el.className = 'boot-overlay'
+    el.innerHTML = `
+      <div class="boot-box mono">
+        <div class="boot-logo">SIAP <b>v2.4.1-pilot</b></div>
+        <div class="boot-sub">Sistem Informasi Absensi Pelajar</div>
+        <div class="boot-logs"></div>
+        <div class="boot-bar"><div class="boot-fill"></div></div>
+      </div>`
+    document.body.appendChild(el)
+    const logs = [
+      'memuat modul absensi ......... OK',
+      'verifikasi database .......... OK',
+      'sinkronisasi jadwal .......... OK',
+      'menyiapkan sesi tester ....... OK'
+    ]
+    const box = el.querySelector('.boot-logs')
+    logs.forEach((l, i) => setTimeout(() => {
+      const d = document.createElement('div')
+      d.textContent = '> ' + l
+      box.appendChild(d)
+    }, 260 + i * 280))
+    const fill = el.querySelector('.boot-fill')
+    requestAnimationFrame(() => {
+      fill.style.transition = 'width 1.7s cubic-bezier(.4,0,.2,1)'
+      fill.style.width = '100%'
+    })
+    setTimeout(() => {
+      el.classList.add('boot-out')
+      setTimeout(() => { el.remove(); resolve() }, 500)
+    }, 2050)
+  })
+}
+
+// ─────────────────────────────────────────────────────────────
 // BOOT
 // ─────────────────────────────────────────────────────────────
 async function boot() {
   primeAudio()
+  const skipBoot = params.has('jump') || params.has('preview')
+  const bootP = skipBoot ? null : showBootOverlay()
   try {
     let preview = false
     if (params.get('preview') === 'draft') preview = await canPreviewDraft()
     D = await loadExperience({ previewDraft: preview })
   } catch (e) {
+    if (bootP) { bootP.then(() => {}) }
     document.getElementById('app').innerHTML = SCREENS.error({ msg: errMsg(e) })
     return
   }
@@ -508,6 +677,7 @@ async function boot() {
     document.getElementById('app').innerHTML = SCREENS.nopublish()
     return
   }
+  if (bootP) await bootP // boot selesai dulu, baru layar pertama muncul
   applyAppearance()
 
   // Preload musik SEJAK AWAL, tapi tidak diputar

@@ -181,3 +181,15 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   .split { grid-template-columns: 1fr; }
   .b-fields { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Balasan (replies) ── */
+.rep-list { display: flex; flex-direction: column; gap: 12px; }
+.rep-item {
+  padding: 14px 16px; border-radius: 12px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(120,150,255,.14);
+}
+.rep-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.rep-head b { flex: 0 1 auto; }
+.rep-head .tiny { flex: 1; }
+.rep-body { font-size: 14px; line-height: 1.65; white-space: pre-wrap; }

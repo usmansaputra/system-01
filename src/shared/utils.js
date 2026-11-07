@@ -77,3 +77,22 @@ export async function compressImage(file, maxDim = 1600, quality = 0.82) {
     return file
   }
 }
+
+// Selfie verifikasi → dataURL kecil (maks 720px, JPEG).
+// Disimpan di localStorage (ST.selfie) supaya survive refresh — TIDAK diupload
+// ke mana pun (privasi). Dipakai buat Kartu Pilot Tester di layar akhir.
+export async function makeSelfieDataURL(file, maxDim = 720, quality = 0.72) {
+  try {
+    if (!file || !file.type || !file.type.startsWith('image/')) return ''
+    const img = await createImageBitmap(file)
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height))
+    const w = Math.max(1, Math.round(img.width * scale))
+    const h = Math.max(1, Math.round(img.height * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = w; canvas.height = h
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+    return canvas.toDataURL('image/jpeg', quality)
+  } catch {
+    return '' // format gak didukung browser → kartu fallback ke inisial
+  }
+}

@@ -50,6 +50,16 @@ export async function assembleDraft() {
 }
 
 // ------------------------------------------------------------
+// BALASAN PENERIMA (tabel replies — anon boleh insert, admin baca)
+// ------------------------------------------------------------
+export async function sendReply(senderName, body) {
+  if (!supabase) return { demo: true } // mode demo → simulasi sukses
+  const { error } = await supabase.from('replies').insert({ sender_name: senderName, body })
+  if (error) throw error
+  return { demo: false }
+}
+
+// ------------------------------------------------------------
 // ADMIN (CMS)
 // ------------------------------------------------------------
 export const adminApi = {
@@ -152,5 +162,17 @@ export const adminApi = {
       .select('id', { count: 'exact', head: true })
     if (error) throw error
     return count || 0
+  },
+
+  async listReplies() {
+    const { data, error } = await supabase.from('replies')
+      .select('*').order('created_at', { ascending: false }).limit(200)
+    if (error) throw error
+    return data
+  },
+
+  async deleteReply(id) {
+    const { error } = await supabase.from('replies').delete().eq('id', id)
+    if (error) throw error
   }
 }

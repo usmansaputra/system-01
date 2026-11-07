@@ -167,11 +167,13 @@ const SCREENS = {
   // ── 5. CINEMATIC REVEAL ─────────────────────────────────────
   reveal({ D, ST }) {
     const s = D.site
+    // Judul dipecah per huruf → dianimasikan drop satu-satu (binder reveal)
+    const chars = (str) => [...str].map((ch) => `<span class="rv-ch">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('')
     return `
     <section class="screen reveal-screen" data-screen="reveal">
       <div class="reveal-body">
         <div class="reveal-kicker mono" data-anim>HARI INI · ${esc(fmtTanggal(s.birthday_date) || 'HARI SPESIAL')}</div>
-        <h1 class="reveal-title" data-anim>SELAMAT ULANG TAHUN,<br>${esc(ST.name).toUpperCase()}! 🎂</h1>
+        <h1 class="reveal-title">${chars('SELAMAT ULANG TAHUN,')}<br>${chars(esc(ST.name).toUpperCase())}! 🎂</h1>
         <p class="reveal-sub" data-anim>${esc(s.reveal_subtitle || '')}</p>
         <button id="rv-next" class="btn btn-love btn-big" data-anim>LIHAT GALERI KAMU →</button>
       </div>
@@ -197,25 +199,44 @@ const SCREENS = {
     </section>`
   },
 
-  // ── 7. SURPRISE BUTTON ──────────────────────────────────────
+  // ── 7. SURPRISE — KUE + TIUP LILIN ──────────────────────────
   surprise() {
+    const candles = [0, 1, 2, 3, 4].map((i) => `
+      <div class="candle" data-i="${i}" role="button" aria-label="lilin ${i + 1}">
+        <i class="flame"></i><i class="smoke"></i><i class="stick"></i>
+      </div>`).join('')
     return `
     <section class="screen" data-screen="surprise">
       <div class="screen-body center">
         <div class="sp-wrap" data-anim>
-          <h1 class="soft-title">Masih ada satu hal terakhir…</h1>
-          <button id="sp-btn" class="btn btn-love btn-huge pulse">ONE LAST SURPRISE</button>
-          <div id="sp-count" class="count hidden"></div>
+          <div id="sp-intro">
+            <h1 class="soft-title">Masih ada satu hal terakhir…</h1>
+            <button id="sp-btn" class="btn btn-love btn-huge pulse">ONE LAST SURPRISE</button>
+          </div>
+          <div id="cake-scene" class="hidden">
+            <h1 class="soft-title cake-title">Tiup lilinnya — tap satu-satu ya ♡</h1>
+            <div class="cake">
+              <div class="cake-glow"></div>
+              <div class="candles">${candles}</div>
+              <div class="cake-layer top">
+                <div class="drip d1"></div><div class="drip d2"></div><div class="drip d3"></div>
+                <div class="drip d4"></div><div class="drip d5"></div>
+              </div>
+              <div class="cake-layer bottom"></div>
+              <div class="cake-plate"></div>
+            </div>
+            <div id="cake-count" class="mono cake-count"></div>
+          </div>
         </div>
       </div>
     </section>`
   },
 
-  // ── 8. BIRTHDAY LETTER (amplop) ─────────────────────────────
+  // ── 8. BIRTHDAY LETTER (amplop → surat diketik live) ────────
   letter({ D }) {
     const L = D.letter || {}
     const paras = String(L.body || '').split(/\n\s*\n/).filter(Boolean)
-      .map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('')
+      .map((p) => `<p class="type-p" data-txt="${esc(p)}"></p>`).join('')
     return `
     <section class="screen" data-screen="letter">
       <div class="letter-scene">
@@ -227,17 +248,21 @@ const SCREENS = {
         <button id="lt-open" class="btn btn-love" data-anim>BUKA AMPLOP</button>
         <div id="letter-card" class="letter-card hidden">
           <h2>${esc(L.title || 'Buat Kamu,')}</h2>
-          ${paras || '<p>…</p>'}
-          <div class="sign">With love,<br><span class="hand">${esc(L.signature || '')}</span> ♡</div>
-          <button id="lt-next" class="btn btn-ghost">SELANJUTNYA →</button>
+          ${paras || '<p class="type-p" data-txt="…"></p>'}
+          <div class="sign hidden">With love,<br><span class="hand">${esc(L.signature || '')}</span> ♡</div>
+          <div class="type-hint mono tiny muted">tap surat buat ngebutin ✍</div>
+          <button id="lt-next" class="btn btn-ghost hidden">SELANJUTNYA →</button>
         </div>
       </div>
     </section>`
   },
 
-  // ── 9. FINAL ENDING ─────────────────────────────────────────
+  // ── 9. FINAL ENDING — kartu pilot + balasan ─────────────────
   end({ D, ST }) {
     const s = D.site
+    const photo = ST.selfie
+      ? `<img src="${ST.selfie}" alt="foto pilot">`
+      : `<span class="pc-initial">${esc((ST.name || '?').charAt(0).toUpperCase())}</span>`
     return `
     <section class="screen" data-screen="end">
       <div class="screen-body center">
@@ -245,11 +270,35 @@ const SCREENS = {
           <div class="end-heart">♡</div>
           <h1 class="soft-title">THE END</h1>
           <p class="muted">With love, <b>${esc(s.sender_name || 'seseorang yang sayang kamu')}</b></p>
+          <div class="pilot-card">
+            <div class="pc-head mono">SIAP · KARTU PILOT TESTER</div>
+            <div class="pc-body">
+              <div class="pc-photo">${photo}</div>
+              <div class="pc-info">
+                <div class="pc-name">${esc(ST.name || 'Pilot')}</div>
+                <div class="pc-row mono">KELAS · ${esc(ST.className || '—')}</div>
+                <div class="pc-row mono">SESI · ${esc(ST.session)}</div>
+                <div class="pc-row mono ok-text">SEMUA MODUL LULUS ✓</div>
+              </div>
+            </div>
+            <div class="pc-foot mono"><span>${esc(s.school_name || '')}</span><span>${esc(s.access_code || '')}</span></div>
+            <div class="pc-stamp mono">LULUS ✓</div>
+          </div>
+          <p class="pc-hint muted tiny">screenshot kartu ini buat kenang-kenangan ya ♡</p>
           <div class="end-btns">
             <button id="end-replay" class="btn btn-love">ULANGI KENANGAN ↺</button>
             <button id="end-reset" class="btn btn-ghost">KEMBALI KE AWAL</button>
           </div>
-          <div class="mono tiny muted">${esc(s.system_name)} ${esc(s.system_version)} · sesi ${esc(ST.session)}</div>
+          <div class="reply-card">
+            <h3>Balas pesan ini ♡</h3>
+            <div id="rp-form">
+              <textarea id="rp-body" maxlength="600" rows="3" placeholder="Tulis balasan buat pengirim…"></textarea>
+              <div id="rp-err" class="err hidden"></div>
+              <button id="rp-send" class="btn btn-love btn-block">KIRIM BALASAN</button>
+            </div>
+            <div id="rp-ok" class="ok-box hidden"></div>
+          </div>
+          <div class="mono tiny muted" style="margin-top:22px">${esc(s.system_name)} ${esc(s.system_version)} · sesi ${esc(ST.session)}</div>
         </div>
       </div>
     </section>`

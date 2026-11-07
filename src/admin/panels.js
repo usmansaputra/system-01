@@ -57,6 +57,7 @@ export const MENU = [
   { id: 'music', label: 'Music Settings', icon: '♪' },
   { id: 'letter', label: 'Birthday Letter', icon: '✉' },
   { id: 'appearance', label: 'Appearance', icon: '◐' },
+  { id: 'replies', label: 'Balasan', icon: '❝' },
   { id: 'preview', label: 'Preview', icon: '▷' },
   { id: 'publish', label: 'Publish', icon: '⏏' }
 ]
@@ -444,6 +445,35 @@ export const PANELS = {
         toast('Tersimpan ✓ — jangan lupa Publish biar live', 'ok')
       } catch (err) { toast('Gagal: ' + errMsg(err), 'err') }
     }
+  },
+
+  // ── BALASAN (replies dari penerima) ──
+  async replies(root) {
+    const rows = await adminApi.listReplies()
+    root.innerHTML = `
+      <div class="adm-card">
+        <h3>Balasan dari penerima</h3>
+        <p class="muted" style="font-size:13px; margin-bottom:14px">Pesan yang dikirim penerima dari layar akhir situs.
+        Terbaru di atas.</p>
+        ${rows.length ? `<div class="rep-list">${rows.map((r) => `
+          <div class="rep-item">
+            <div class="rep-head">
+              <b>${esc(r.sender_name || 'Tanpa nama')}</b>
+              <span class="mono tiny muted">${new Date(r.created_at).toLocaleString('id-ID')}</span>
+              <button class="btn btn-danger btn-sm rep-del" data-id="${r.id}">Hapus</button>
+            </div>
+            <p class="rep-body">${esc(r.body).replace(/\n/g, '<br>')}</p>
+          </div>`).join('')}</div>`
+        : `<p class="muted">Belum ada balasan. Balasan muncul di sini setelah penerima mengirim dari layar akhir situs.</p>`}
+      </div>`
+    $$('.rep-del', root).forEach((b) => b.addEventListener('click', async () => {
+      if (!(await askConfirm('Hapus balasan ini?', 'Balasan yang dihapus tidak bisa dikembalikan.'))) return
+      try {
+        await adminApi.deleteReply(b.dataset.id)
+        toast('Balasan dihapus ✓', 'ok')
+        renderPanel('replies')
+      } catch (err) { toast('Gagal: ' + errMsg(err), 'err') }
+    }))
   },
 
   // ── PREVIEW ──
